@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, X, Bot, User } from 'lucide-react';
 import { ChatMessage } from '../types';
-import { streamChatResponse } from '../services/gemini';
+import { streamChatResponse } from '../services/inference';
 import ReactMarkdown from 'react-markdown';
 
 interface ChatWidgetProps {
@@ -37,7 +37,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ contextData, language = 
     setIsTyping(true);
 
     try {
-      // Transform internal messages to Gemini history format
+      // Convert to format expected by inference engine
       const history = messages.map(m => ({
         role: m.role,
         parts: [{ text: m.text }]
@@ -59,7 +59,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ contextData, language = 
       }
     } catch (error) {
       console.error('Chat error', error);
-      setMessages(prev => [...prev, { role: 'model', text: 'Sorry, I encountered an error responding to that.', timestamp: Date.now() }]);
+      setMessages(prev => [...prev, { role: 'model', text: 'I encountered an error processing your request. Please try again.', timestamp: Date.now() }]);
     } finally {
       setIsTyping(false);
     }
@@ -69,90 +69,83 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ contextData, language = 
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 p-4 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-105 z-50 flex items-center gap-2"
+        className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-full shadow-lg transition-all hover:scale-105 z-50 group"
       >
         <MessageSquare className="w-6 h-6" />
-        <span className="font-semibold pr-2">Ask Data</span>
+        <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+          Ask AI Assistant
+        </span>
       </button>
     );
   }
 
   return (
-    <div className="fixed bottom-6 right-6 w-[90vw] md:w-[400px] h-[600px] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
+    <div className="fixed bottom-6 right-6 w-96 h-[500px] bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl flex flex-col z-50 animate-in fade-in slide-in-from-bottom-10">
       {/* Header */}
-      <div className="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
+      <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50 backdrop-blur rounded-t-2xl">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-blue-500/20 rounded-lg">
-            <Bot className="w-5 h-5 text-blue-400" />
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <Bot className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-white text-sm">{modelName} Assistant</h3>
-            <p className="text-xs text-slate-400">Powered by {modelName}</p>
+            <h3 className="font-semibold text-white text-sm">AI Analyst</h3>
+            <p className="text-xs text-slate-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+              {modelName}
+            </p>
           </div>
         </div>
-        <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white p-1">
+        <button 
+          onClick={() => setIsOpen(false)}
+          className="text-slate-400 hover:text-white transition-colors"
+        >
           <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900/95">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg, idx) => (
-          <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {msg.role === 'model' && (
-               <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-4 h-4 text-blue-400" />
-               </div>
-            )}
-            <div 
-              className={`max-w-[80%] p-3 rounded-2xl text-sm leading-relaxed ${
-                msg.role === 'user' 
-                  ? 'bg-blue-600 text-white rounded-tr-none' 
-                  : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700'
-              }`}
-            >
-              <ReactMarkdown>{msg.text}</ReactMarkdown>
+          <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+              msg.role === 'user' ? 'bg-slate-700' : 'bg-blue-600/20 text-blue-400'
+            }`}>
+              {msg.role === 'user' ? <User className="w-4 h-4 text-slate-300" /> : <Bot className="w-4 h-4" />}
             </div>
-             {msg.role === 'user' && (
-               <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                  <User className="w-4 h-4 text-white" />
-               </div>
-            )}
+            <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+              msg.role === 'user' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-slate-700/50 text-slate-200 border border-slate-700'
+            }`}>
+              {msg.role === 'model' ? (
+                <div className="prose prose-invert prose-sm max-w-none">
+                  <ReactMarkdown>{msg.text}</ReactMarkdown>
+                </div>
+              ) : (
+                msg.text
+              )}
+            </div>
           </div>
         ))}
-        {isTyping && (
-           <div className="flex gap-3 justify-start">
-             <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-4 h-4 text-blue-400" />
-             </div>
-             <div className="bg-slate-800 p-3 rounded-2xl rounded-tl-none border border-slate-700">
-               <div className="flex gap-1">
-                 <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce"></span>
-                 <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce delay-100"></span>
-                 <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce delay-200"></span>
-               </div>
-             </div>
-           </div>
-        )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 bg-slate-800 border-t border-slate-700">
-        <div className="flex gap-2">
+      <form onSubmit={handleSubmit} className="p-4 border-t border-slate-700 bg-slate-800/50 rounded-b-2xl">
+        <div className="relative">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={`Ask about your data in ${language}...`}
-            className="flex-1 bg-slate-900 border border-slate-700 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-slate-500"
+            placeholder="Ask about trends, outliers..."
+            className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
           />
           <button 
             type="submit"
             disabled={!input.trim() || isTyping}
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white p-3 rounded-xl transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4" />
           </button>
         </div>
       </form>

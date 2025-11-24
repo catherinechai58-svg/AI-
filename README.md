@@ -1,70 +1,20 @@
-## AI 插件 — 前端界面
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
 
-这是本仓库的前端部分，用于演示和运行一个面向数据与对话的 AI 插件界面。该前端支持可配置的多模型接口、CSV 数据上传与展示、可视化图表、数据分析以及与 AI 的文本交互。
+# Run and deploy your AI Studio app
 
-主要功能
-- 多模型接口（可配置不同后端模型）
-- CSV 文件上传与预览
-- 数据可视化（图表展示、交互式视图）
-- 数据分析（统计摘要、列分析、简单建模/探索性分析）
-- AI 文本交互（基于选定模型进行自然语言问答与分析）
-- 支持导出分析结果/图表截图（pdf）
+This contains everything you need to run your app locally.
 
-快速开始
+View your app in AI Studio: https://ai.studio/apps/drive/1V-9LUUjV1kKTPK9-5nKgr5hWs4yMwGfP
 
-前提条件
-- Node.js（推荐 16+ 或更高）
-- 有效的模型 API Key（示例中使用 GEMINI_API_KEY 作为配置项；也可扩展为其他模型的 Key）
+## Run Locally
 
-安装与运行
-1. 克隆仓库并进入本目录（或在已有仓库中切换到前端目录）：
-   ```bash
-   git clone https://github.com/catherinechai58-svg/AI-.git
-   cd AI-
-   ```
-2. 安装依赖：
-   ```bash
-   npm install
-   ```
-3. 配置环境变量：
-   - 复制示例环境文件（如果存在）并设置你的 API Key：
-     ```bash
-     cp .env.local.example .env.local
-     ```
-   - 在 `.env.local` 中设置：
-     ```
-     GEMINI_API_KEY=你的_gemini_api_key_here
-     ```
-   - （如果使用其它模型或多个模型，按项目说明添加相应的环境变量）
-4. 启动开发服务器：
-   ```bash
-   npm run dev
-   ```
-5. 在浏览器打开：
-   ```
-   http://localhost:3000
-   ```
+**Prerequisites:**  Node.js
 
-使用说明（简要）
-- 上传 CSV：在“数据”或“上传”页面选择 CSV 文件，前端会进行预览并尝试解析列类型。
-- 可视化：选择列后可以生成表格、折线图、柱状图等。
-- 数据分析：使用“分析”或“探索”功能可以查看统计摘要（均值、中位数、缺失值等），也可以向后端/模型发起更高级的分析请求。
-- AI 文本交互：在“对话”或“助手”页面输入自然语言问题（例如“帮助我找出销量与广告支出之间的关系”）并选择模型，模型会返回分析建议或自然语言回答。
 
-开发与构建
-- 构建生产包：
-  ```bash
-  npm run build
-  npm run start
-  ```
-- 代码风格与提交：建议遵循项目内的 ESLint/Prettier 配置（如有）。
-
-扩展与配置
-- 多模型支持：前端通过配置不同的 API endpoint/Key 来接入多模型接口；如需新增模型，可在环境变量和前端配置中添加对应项并处理认证流程。
-- 后端交互：确认后端 API 的路由与请求格式（上传 CSV、请求图表数据、向模型提交 prompt 等），必要时调整前端请求逻辑。
-
-贡献
-欢迎提 PR 或 Issues 来改进功能、修复 bug 或补充文档。提交前请先在 issue 中简要描述变更计划以便讨论。
-
-许可证
-本项目遵循仓库根目录中的 LICENSE（如无请与仓库所有者确认）。
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`

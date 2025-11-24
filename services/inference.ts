@@ -1,8 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
 import { AnalysisResult } from '../types';
 
-// Initialize with environment variable directly as per guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Underlying foundation model adapter
+const FOUNDATION_MODEL = 'gemini-2.5-flash';
+const client = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // --- SECURITY GUARD IMPLEMENTATION ---
 /**
@@ -77,8 +78,8 @@ export const analyzeData = async (
       ${truncatedContent}
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+    const response = await client.models.generateContent({
+      model: FOUNDATION_MODEL,
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -122,8 +123,8 @@ export const streamChatResponse = async function* (
     IMPORTANT: You must answer in ${language}.
   `;
 
-  const chat = ai.chats.create({
-    model: 'gemini-2.5-flash',
+  const chat = client.chats.create({
+    model: FOUNDATION_MODEL,
     config: {
       systemInstruction: systemContext,
     },

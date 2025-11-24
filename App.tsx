@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { AnalysisDashboard } from './components/AnalysisDashboard';
 import { ChatWidget } from './components/ChatWidget';
-import { analyzeData } from './services/gemini';
+import { analyzeData } from './services/inference';
 import { AnalysisResult } from './types';
 import { 
   LayoutDashboard, 
@@ -184,10 +184,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({
              <select 
                value={modelName}
                onChange={(e) => setModelName(e.target.value)}
-               className="bg-slate-900 border border-slate-700 text-sm text-slate-300 rounded-lg px-3 py-2 outline-none focus:border-blue-500 w-48"
+               className="bg-slate-900 border border-slate-700 text-sm text-slate-300 rounded-lg px-3 py-2 outline-none focus:border-blue-500 w-64"
              >
-              <option value="DeepAnalyze-8B">DeepAnalyze-8B</option>
-              <option value="Tongyi-30B">Tongyi-30B</option>
+              <option value="RUC-DataLab/DeepAnalyze-8B">RUC-DataLab/DeepAnalyze-8B</option>
+              <option value="Alibaba-NLP/Tongyi-DeepResearch-30B-A3B">Alibaba-NLP/Tongyi-DeepResearch-30B</option>
             </select>
           </div>
           <div className="h-px bg-slate-700/50"></div>
@@ -200,7 +200,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
              <select 
                value={language}
                onChange={(e) => setLanguage(e.target.value)}
-               className="bg-slate-900 border border-slate-700 text-sm text-slate-300 rounded-lg px-3 py-2 outline-none focus:border-blue-500 w-48"
+               className="bg-slate-900 border border-slate-700 text-sm text-slate-300 rounded-lg px-3 py-2 outline-none focus:border-blue-500 w-64"
              >
               <option value="Simplified Chinese">Simplified Chinese (中文)</option>
               <option value="English">English (US)</option>
@@ -264,7 +264,7 @@ const App: React.FC = () => {
 
   // Settings state
   const [language, setLanguage] = useState('Simplified Chinese');
-  const [modelName, setModelName] = useState('DeepAnalyze-8B');
+  const [modelName, setModelName] = useState('RUC-DataLab/DeepAnalyze-8B');
   const [deepReason, setDeepReason] = useState(false);
 
   // Data Sources state (Mock)
@@ -328,15 +328,23 @@ const App: React.FC = () => {
     </button>
   );
 
+  const getShortModelName = (fullName: string) => {
+    if (fullName.includes('Tongyi')) return 'Tongyi-DeepResearch-30B';
+    if (fullName.includes('DeepAnalyze')) return 'DeepAnalyze-8B';
+    return fullName;
+  }
+
   return (
     <div className="flex h-screen bg-slate-900 text-slate-100 overflow-hidden font-sans">
       {/* Sidebar */}
       <aside className="w-64 bg-slate-900 border-r border-slate-800 hidden md:flex flex-col z-20">
         <div className="p-6 border-b border-slate-800 flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
             <Cpu className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold text-lg tracking-tight text-white truncate" title={modelName}>{modelName}</span>
+          <span className="font-bold text-sm tracking-tight text-white truncate" title={modelName}>
+            {getShortModelName(modelName)}
+          </span>
         </div>
         
         <nav className="flex-1 p-4 space-y-2">
@@ -392,7 +400,7 @@ const App: React.FC = () => {
                 <div className="h-full flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500 mt-10 md:mt-0">
                   <div className="text-center mb-10 max-w-lg">
                     <h2 className="text-4xl font-bold text-white mb-4 tracking-tight">
-                      {modelName} Intelligence
+                      {getShortModelName(modelName)}
                     </h2>
                     <p className="text-slate-400 text-lg">
                       Upload your datasets, logs, or documents. Our advanced AI engine uses {modelName} to uncover hidden patterns and generate interactive visualizations instantly.
@@ -417,7 +425,7 @@ const App: React.FC = () => {
                     <ShieldCheck className="w-4 h-4 text-green-400" />
                     <span className="text-xs text-slate-300 font-medium">Qwen3Guard-Gen-0.6B Active</span>
                   </div>
-                  <p className="mt-4 text-sm text-slate-500">Processing with {modelName}</p>
+                  <p className="mt-4 text-sm text-slate-500">Processing with {getShortModelName(modelName)}</p>
                 </div>
               )}
 
@@ -469,7 +477,7 @@ const App: React.FC = () => {
 
       {/* Chat Widget Overlay - Only on Dashboard when data is present */}
       {currentView === 'dashboard' && analysisResult && dataContent && (
-        <ChatWidget contextData={dataContent} language={language} modelName={modelName} />
+        <ChatWidget contextData={dataContent} language={language} modelName={getShortModelName(modelName)} />
       )}
     </div>
   );
