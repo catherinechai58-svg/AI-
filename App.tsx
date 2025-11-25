@@ -187,8 +187,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                onChange={(e) => setModelName(e.target.value)}
                className="bg-slate-900 border border-slate-700 text-sm text-slate-300 rounded-lg px-3 py-2 outline-none focus:border-blue-500 w-64"
              >
-              <option value="DeepResearch-8B">DeepResearch-8B-Q4_K_M.gguf</option>
-              <option value="Tongyi-DeepResearch-30B">Tongyi-DeepThinking-30B-FP16.safetensors</option>
+              <option value="DeepResearch-8B">DeepResearch-8B</option>
+              <option value="DeepThinking-30B">DeepThinking-30B</option>
             </select>
           </div>
           <div className="h-px bg-slate-700/50"></div>
@@ -330,8 +330,6 @@ const App: React.FC = () => {
   );
 
   const getShortModelName = (fullName: string) => {
-    if (fullName.includes('Tongyi')) return 'DeepThinking-30B';
-    if (fullName.includes('DeepResearch')) return 'DeepResearch-8B';
     return fullName;
   }
 
