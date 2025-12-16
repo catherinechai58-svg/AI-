@@ -1,23 +1,110 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, X, Bot, User } from 'lucide-react';
-import { ChatMessage } from '../types';
+import { ChatMessage, TokenUsage } from '../types';
+// Switch back to inference service which now wraps Gemini
 import { streamChatResponse } from '../services/inference';
 import ReactMarkdown from 'react-markdown';
 
 interface ChatWidgetProps {
-  contextData: string;
-  language?: string;
+  contextData?: string | null;
+  language: string;
   modelName: string;
+  onTokenUsage?: (usage: TokenUsage) => void;
 }
 
-export const ChatWidget: React.FC<ChatWidgetProps> = ({ contextData, language = "Simplified Chinese", modelName }) => {
+const translations: Record<string, any> = {
+  'Simplified Chinese': {
+    askAboutData: '向AI询问数据',
+    chatWithAI: '与AI对话',
+    aiAnalyst: 'AI 分析师',
+    greetingData: '你好！我已经分析了您的数据。您可以问我关于特定趋势、数值或更深层见解的问题。',
+    greetingGeneral: '你好！我是您的AI数据分析助手。上传数据以进行特定分析，或问我关于数据科学的一般问题。',
+    placeholderData: '询问趋势、异常值...',
+    placeholderGeneral: '输入您的消息...',
+    error: '处理您的请求时遇到错误。请重试。'
+  },
+  'English': {
+    askAboutData: 'Ask AI about Data',
+    chatWithAI: 'Chat with AI',
+    aiAnalyst: 'AI Analyst',
+    greetingData: 'Hello! I have analyzed your data. Ask me anything about specific trends, values, or deeper insights.',
+    greetingGeneral: 'Hello! I am your AI Data Analyst assistant. Upload data for specific analysis, or ask me general questions about data science.',
+    placeholderData: 'Ask about trends, outliers...',
+    placeholderGeneral: 'Type your message...',
+    error: 'I encountered an error processing your request. Please try again.'
+  },
+  'Japanese': {
+    askAboutData: 'データについてAIに聞く',
+    chatWithAI: 'AIとチャット',
+    aiAnalyst: 'AIアナリスト',
+    greetingData: 'こんにちは！データを分析しました。特定の傾向や数値、深い洞察について質問してください。',
+    greetingGeneral: 'こんにちは！AIデータ分析アシスタントです。分析のためにデータをアップロードするか、データサイエンスについて質問してください。',
+    placeholderData: '傾向や異常値について聞く...',
+    placeholderGeneral: 'メッセージを入力...',
+    error: 'リクエストの処理中にエラーが発生しました。もう一度お試しください。'
+  },
+  'Korean': {
+    askAboutData: 'AI에게 데이터 문의',
+    chatWithAI: 'AI와 채팅',
+    aiAnalyst: 'AI 분석가',
+    greetingData: '안녕하세요! 데이터를 분석했습니다. 특정 추세, 값 또는 더 깊은 통찰력에 대해 질문해 주세요.',
+    greetingGeneral: '안녕하세요! AI 데이터 분석 도우미입니다. 분석할 데이터를 업로드하거나 데이터 과학에 대한 일반적인 질문을 하세요.',
+    placeholderData: '추세, 이상치에 대해 질문...',
+    placeholderGeneral: '메시지를 입력하세요...',
+    error: '요청을 처리하는 중 오류가 발생했습니다. 다시 시도해 주세요.'
+  },
+   'Spanish': {
+    askAboutData: 'Preguntar a IA sobre Datos',
+    chatWithAI: 'Chat con IA',
+    aiAnalyst: 'Analista IA',
+    greetingData: '¡Hola! He analizado tus datos. Pregúntame cualquier cosa sobre tendencias específicas, valores o ideas profundas.',
+    greetingGeneral: '¡Hola! Soy tu asistente de análisis de datos. Sube datos para un análisis específico o hazme preguntas generales.',
+    placeholderData: 'Preguntar sobre tendencias...',
+    placeholderGeneral: 'Escribe tu mensaje...',
+    error: 'Encontré un error al procesar tu solicitud. Por favor intenta de nuevo.'
+  },
+  'French': {
+    askAboutData: 'Demander à l\'IA sur les Données',
+    chatWithAI: 'Discuter avec l\'IA',
+    aiAnalyst: 'Analyste IA',
+    greetingData: 'Bonjour ! J\'ai analysé vos données. Posez-moi des questions sur les tendances spécifiques, les valeurs ou des informations plus approfondies.',
+    greetingGeneral: 'Bonjour ! Je suis votre assistant d\'analyse de données. Téléchargez des données ou posez-moi des questions générales.',
+    placeholderData: 'Demander sur les tendances...',
+    placeholderGeneral: 'Tapez votre message...',
+    error: 'J\'ai rencontré une erreur lors du traitement de votre demande. Veuillez réessayer.'
+  },
+  'German': {
+    askAboutData: 'KI zu Daten befragen',
+    chatWithAI: 'Mit KI chatten',
+    aiAnalyst: 'KI Analyst',
+    greetingData: 'Hallo! Ich habe Ihre Daten analysiert. Fragen Sie mich nach Trends, Werten oder tieferen Erkenntnissen.',
+    greetingGeneral: 'Hallo! Ich bin Ihr KI-Datenanalyse-Assistent. Laden Sie Daten hoch oder stellen Sie allgemeine Fragen.',
+    placeholderData: 'Fragen Sie nach Trends...',
+    placeholderGeneral: 'Nachricht eingeben...',
+    error: 'Bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.'
+  }
+};
+
+export const ChatWidget: React.FC<ChatWidgetProps> = ({ contextData, language = "English", modelName, onTokenUsage }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'model', text: 'Hello! I have analyzed your data. Ask me anything about specific trends, values, or deeper insights.', timestamp: Date.now() }
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const t = translations[language] || translations['English'];
+
+  useEffect(() => {
+    // Initial greeting based on context
+    if (messages.length === 0) {
+      if (contextData) {
+        setMessages([{ role: 'model', text: t.greetingData, timestamp: Date.now() }]);
+      } else {
+        setMessages([{ role: 'model', text: t.greetingGeneral, timestamp: Date.now() }]);
+      }
+    }
+  }, [contextData, language]); // Re-run if language changes to update greeting? Ideally should just stay, but for demo good to switch.
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -37,13 +124,13 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ contextData, language = 
     setIsTyping(true);
 
     try {
-      // Convert to format expected by inference engine
+      // Convert to format expected by API
       const history = messages.map(m => ({
         role: m.role,
         parts: [{ text: m.text }]
       }));
 
-      const resultStream = await streamChatResponse(history, userMsg.text, contextData, language, modelName);
+      const resultStream = await streamChatResponse(history, userMsg.text, contextData || "", language, modelName);
       
       let fullResponse = '';
       const botMsgId = Date.now();
@@ -51,15 +138,20 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ contextData, language = 
       setMessages(prev => [...prev, { role: 'model', text: '', timestamp: botMsgId }]);
 
       for await (const chunk of resultStream) {
-        const text = chunk.text || '';
-        fullResponse += text;
-        setMessages(prev => 
-          prev.map(msg => msg.timestamp === botMsgId ? { ...msg, text: fullResponse } : msg)
-        );
+        if (chunk.text) {
+          const text = chunk.text || '';
+          fullResponse += text;
+          setMessages(prev => 
+            prev.map(msg => msg.timestamp === botMsgId ? { ...msg, text: fullResponse } : msg)
+          );
+        }
+        if (chunk.usage && onTokenUsage) {
+          onTokenUsage(chunk.usage);
+        }
       }
     } catch (error) {
       console.error('Chat error', error);
-      setMessages(prev => [...prev, { role: 'model', text: 'I encountered an error processing your request. Please try again.', timestamp: Date.now() }]);
+      setMessages(prev => [...prev, { role: 'model', text: t.error, timestamp: Date.now() }]);
     } finally {
       setIsTyping(false);
     }
@@ -73,7 +165,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ contextData, language = 
       >
         <MessageSquare className="w-6 h-6" />
         <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-          Ask AI Assistant
+          {contextData ? t.askAboutData : t.chatWithAI}
         </span>
       </button>
     );
@@ -88,7 +180,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ contextData, language = 
             <Bot className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-white text-sm">AI Analyst</h3>
+            <h3 className="font-semibold text-white text-sm">{t.aiAnalyst}</h3>
             <p className="text-xs text-slate-400 flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
               {modelName}
@@ -137,7 +229,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ contextData, language = 
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about trends, outliers..."
+            placeholder={contextData ? t.placeholderData : t.placeholderGeneral}
             className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
           />
           <button 

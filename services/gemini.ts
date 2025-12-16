@@ -1,45 +1,20 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { AnalysisResult } from '../types';
 
-// Initialize with environment variable directly as per guidelines
+// Initialize with environment variable directly
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-// --- SECURITY GUARD IMPLEMENTATION ---
-/**
- * Simulates a call to Qwen3Guard-Gen-0.6B for content moderation.
- * In a real-world scenario, this would make an API call to the guard model endpoint.
- */
-const checkSafetyWithQwenGuard = async (content: string, stage: 'input' | 'output'): Promise<void> => {
-  // Log the security audit
-  console.log(`🛡️ [Qwen3Guard-Gen-0.6B] Auditing ${stage} (Length: ${content.length})...`);
-  
-  // Simulate network latency for the external model call
-  await new Promise(resolve => setTimeout(resolve, 800));
-
-  // Mock detection logic: 
-  // Trigger this by including "INJECT_MALWARE" in the file content.
-  const isSuspicious = content.includes("INJECT_MALWARE") || content.includes("FORCE_UNSAFE");
-  
-  if (isSuspicious) {
-    console.error(`🛡️ [Qwen3Guard-Gen-0.6B] Blocked ${stage}: Safety violation detected.`);
-    throw new Error(`[Security Alert] Qwen3Guard-Gen-0.6B blocked ${stage}: Potentially unsafe content detected.`);
-  }
-
-  console.log(`🛡️ [Qwen3Guard-Gen-0.6B] ${stage} passed verification.`);
-};
 
 export const analyzeData = async (
   dataContent: string, 
   fileName: string, 
-  language: string = "Simplified Chinese",
-  modelIdentity: string = "RUC-DataLab/DeepAnalyze-8B"
+  language: string = "English",
+  modelIdentity: string = "DeepAnalyze-8B"
 ): Promise<AnalysisResult> => {
   try {
-    // 1. Security Check: INPUT
-    await checkSafetyWithQwenGuard(dataContent, 'input');
-
-    // Truncate content to prevent payload size issues
-    const truncatedContent = dataContent.slice(0, 20000);
+    // Truncate content to fit context window if necessary, though Gemini 1.5/2.0 has huge context.
+    // We'll keep a safe limit for the prompt construction.
+    const truncatedContent = dataContent.slice(0, 50000);
 
     const prompt = `
       You are ${modelIdentity}, an intelligent data analysis engine. 
@@ -86,9 +61,6 @@ export const analyzeData = async (
     });
 
     if (response.text) {
-      // 2. Security Check: OUTPUT
-      await checkSafetyWithQwenGuard(response.text, 'output');
-      
       return JSON.parse(response.text) as AnalysisResult;
     }
     throw new Error("No analysis generated");
@@ -99,23 +71,20 @@ export const analyzeData = async (
 };
 
 /**
- * Streams chat response but wraps it to enable Post-Generation Audit by QwenGuard.
+ * Streams chat response using Gemini.
  */
 export const streamChatResponse = async function* (
   history: { role: string; parts: { text: string }[] }[],
   message: string,
   contextData: string,
-  language: string = "Simplified Chinese",
-  modelIdentity: string = "RUC-DataLab/DeepAnalyze-8B"
+  language: string = "English",
+  modelIdentity: string = "DeepAnalyze-8B"
 ) {
-  // 1. Security Check: INPUT (User Message)
-  await checkSafetyWithQwenGuard(message, 'input');
-
   const systemContext = `
     You are ${modelIdentity}, an intelligent data analysis assistant. 
     The user is asking questions about the following dataset they uploaded:
     ---
-    ${contextData.slice(0, 10000)}
+    ${contextData.slice(0, 20000)}
     ---
     Answer specific questions about this data. 
     Be concise and analytical.
@@ -132,20 +101,10 @@ export const streamChatResponse = async function* (
 
   const resultStream = await chat.sendMessageStream({ message });
   
-  let fullResponseAccumulator = "";
-
-  // Pass through the stream to the UI for low latency
   for await (const chunk of resultStream) {
     const text = chunk.text;
     if (text) {
-      fullResponseAccumulator += text;
+      yield { text };
     }
-    yield chunk;
-  }
-
-  // 2. Security Check: OUTPUT (Post-Stream Audit)
-  // We check the full gathered response after streaming finishes.
-  if (fullResponseAccumulator.length > 0) {
-    await checkSafetyWithQwenGuard(fullResponseAccumulator, 'output');
   }
 };
